@@ -1,0 +1,8 @@
+{
+ "dataset": "FineWeb-Edu val.bin",
+ "domain": "fineweb",
+ "prompt_len": 512,
+ "n": 256,
+ "construction": "blocks of (prompt_len+new_tokens), rng(0) choice, first prompt_len tokens -- identical to load_prompts(); as a fixture so set ORDER is controllable",
+ "tokenizer": "gpt2"
+}

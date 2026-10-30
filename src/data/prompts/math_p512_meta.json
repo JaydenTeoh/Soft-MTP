@@ -1,0 +1,10 @@
+{
+ "dataset": "open-web-math/open-web-math",
+ "config": null,
+ "split": "train",
+ "rows_scanned": 374,
+ "domain": "math",
+ "prompt_len": 512,
+ "n": 256,
+ "tokenizer": "gpt2 (tiktoken encode_ordinary, no special tokens)"
+}

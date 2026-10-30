@@ -1,0 +1,11 @@
+{
+ "dataset": "wikimedia/wikipedia",
+ "config": "20231101.en",
+ "split": "train",
+ "domain": "science",
+ "prompt_len": 512,
+ "n": 256,
+ "rows_scanned": 7099,
+ "filter": "science keyword in first 600 chars; deduped against wiki_p512",
+ "tokenizer": "gpt2 (tiktoken encode_ordinary, no special tokens)"
+}

@@ -1,0 +1,31 @@
+# torch>=2.9 ships torch.optim.Muon, which every config here uses (optim.optimizer: muon); 2.5
+# would do for whole-model torch.compile alone. On older torch, set optim.optimizer: adamw.
+torch>=2.9
+
+# transformers>=4.52 is NOT cosmetic. Two things break below it:
+#   - create_causal_mask, used by the attention path;
+#   - can_generate(), which before ~4.50 tested whether prepare_inputs_for_generation was
+#     OVERRIDDEN rather than whether GenerationMixin was inherited. We inherit it, so an older
+#     install refuses .generate() outright with an error naming this very class as the fix.
+transformers>=4.52
+
+# accelerate is NOT transitive: transformers declares it only in its [torch] extra, so a plain
+# `pip install transformers` leaves Trainer raising at import.
+accelerate>=1.0
+huggingface_hub>=0.23,<1.0   # transformers<5 is incompatible with hub 1.x
+
+hf_transfer>=0.1.6           # parallel multipart downloads for src/fetch_data.py
+# lm-evaluation-harness, for `python -m src.eval_lm`. Capped below 0.5: the wrapper imports
+# lm_eval.__main__.cli_evaluate, and 0.5 is a major bump that may move it. 0.4.12 is the version
+# the paper's numbers were produced with.
+lm_eval>=0.4.12,<0.5
+
+wandb>=0.17                  # metric logging; `--wandb` to src.train (off by default)
+datasets>=2.19               # streaming FineWeb-Edu in src/prepare_data.py
+tiktoken>=0.7                # GPT-2 BPE
+numpy>=1.24
+pyyaml>=6.0
+
+# Optional:
+#   pytest         to run tests/ (`pytest tests/ -q`): the KL-recovery identity gate
+#   liger-kernel   set model.ce_kernel: liger for the fused linear CE (~13 GB less at 1536x36)

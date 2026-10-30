@@ -1,0 +1,86 @@
+# Soft-MTP 1p2b: 1173.9M params on the next-token path -- what you deploy, since the MTP heads are
+# discarded at inference -- and 1273.0M total with them. 1536 hidden x 36 layers, 3 MTP heads,
+# 31.5B tokens of FineWeb-Edu.
+#
+# Swap the objective on the command line, not in this file:
+#   --objective soft_mtp    the method: each MTP head is trained against the model's own NTP verifier
+#   --objective hard_mtp    the usual baseline: heads trained on the realized next token
+#   --objective direct_kl   ablation: the KL is applied to the shared unembedding too, not just the trunk
+#   --objective ntp --n-mtp 0   the pure next-token floor
+#
+# Peak LR is 5x the GPT-3 value for this size class (Mamba-2 App. D.2), decayed by cosine to a FIXED
+# 1e-5 -- not to a fraction of the peak. Both papers this recipe comes from use an absolute floor.
+
+seed: 13
+gpu_peak_flops: 2.34e+14      # bf16 peak of YOUR card. Affects the reported MFU only; set it or ignore it.
+
+model:
+  mtp_arch: deepseek          # sequential heads (DeepSeek-V3 style) | "meta" for parallel heads
+  vocab_size: 50304           # GPT-2 50257 padded to a multiple of 128
+  hidden_size: 1536
+  num_hidden_layers: 36
+  num_heads: 24
+  num_kv_heads: 24
+  n_mtp: 3                    # MTP heads beyond the next-token head
+  mtp_head_layers: 1          # transformer blocks per head
+  mtp_per_head_norm: true     # each head gets its own final RMSNorm (DeepSeek/Nemotron-faithful)
+  max_position_embeddings: 2048
+  rope_theta: 10000.0
+  norm_eps: 1.0e-05
+  tie_word_embeddings: false
+  objective: soft_mtp
+  mtp_weight: 1.0             # weight on the auxiliary MTP term
+  ce_kernel: naive            # "liger" uses the fused linear CE: ~13 GB less at the cost of ~2% speed
+
+data:
+  train_bin: data/fineweb-edu/train.bin    # written by prepare_data.py
+  val_bin: data/fineweb-edu/val.bin
+  seq_len: 2048
+
+optim:
+  lr: 0.001
+  weight_decay: 0.1
+  betas: [0.9, 0.95]
+  optimizer: muon             # Muon on the 2D hidden matrices + AdamW on embeddings/head/norms.
+  muon_momentum: 0.95         #   Use "adamw" for the plain baseline; the LR above is tuned for Muon
+  muon_nesterov: true         #   and transfers because match_rms_adamw rescales Muon's update to
+  muon_ns_steps: 5            #   AdamW's RMS (Moonshot arXiv:2502.16982 2.2).
+  muon_adjust_lr_fn: match_rms_adamw
+
+# Logging is OFF by default so a fresh clone never tries to phone home. Turn it on with
+# `--wandb` on the command line, or flip `enabled` here. Needs `wandb login` first.
+wandb:
+  enabled: false
+  project: soft-mtp
+
+train:
+  compile_mode: whole         # torch.compile the whole model (~2x throughput); "none" to disable
+  micro_batch_size: 16
+  global_batch_seqs: 256      # 256 x 2048 = 524,288 tokens/step. grad_accum is DERIVED from
+                              # this and your GPU count, so the token budget per step holds
+                              # whatever you launch on (16 x 4 x 4 GPUs here).
+  total_steps: 60000          # 60000 x 524,288 = 31.5B tokens
+  warmup_steps: 2000
+  lr_schedule: cosine         # cosine | wsd | constant
+  min_lr: 1.0e-05             # ABSOLUTE final LR, not a ratio
+  grad_clip: 1.0
+  num_workers: 4
+
+  log_every: 20
+  eval_every: 1000
+  eval_batch_size: 6
+  eval_batches: 200           # 200 x 6 x 2048 = 2.46M tokens held out per eval
+
+  # Self-speculative decoding: the MTP heads draft, the NTP head verifies. Acceptance is the draft
+  # metric that matters; it is expensive, so it runs on its own cadence.
+  spec_every: 10000
+  spec_n_prompts: 64
+  spec_prompt_len: 512
+  spec_new_tokens: 512
+  spec_temperature: 1.0
+
+  out_dir: output
+  save_every: 4000
+  save_only_model: true       # weights only (~5.0 GB); see save_full_steps for resumable ones
+  save_keep_latest: 2
+  save_full_steps: [60000]    # steps that ALSO keep optimizer + scheduler + RNG, so they can resume

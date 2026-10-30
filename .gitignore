@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.DS_Store
+
+# The corpora you build (hundreds of GB). The loader package lives at src/data/, so nothing
+# here shares a name with it.
+/data/
+/output/
+/wandb/

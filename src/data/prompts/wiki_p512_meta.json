@@ -1,0 +1,10 @@
+{
+ "dataset": "wikimedia/wikipedia",
+ "config": "20231101.en",
+ "split": "train",
+ "rows_scanned": 275,
+ "domain": "wiki",
+ "prompt_len": 512,
+ "n": 256,
+ "tokenizer": "gpt2 (tiktoken encode_ordinary, no special tokens)"
+}

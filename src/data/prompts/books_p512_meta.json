@@ -1,0 +1,10 @@
+{
+ "dataset": "lucadiliello/bookcorpusopen",
+ "config": null,
+ "split": "train",
+ "rows_scanned": 256,
+ "domain": "books",
+ "prompt_len": 512,
+ "n": 256,
+ "tokenizer": "gpt2 (tiktoken encode_ordinary, no special tokens)"
+}
